@@ -4,7 +4,8 @@ library(dplyr)
 library(glue)
 library(tibble)
 library(nflfastR)
-
+# get current year
+year = as.integer(format(Sys.Date(), "%Y"))
 
 con = espn_connect(season = 2023,
                    league_id = 631978,
@@ -24,12 +25,21 @@ ps = ff_playerscores(con,season = 2023,week = 10)
 raw_match = espn_getendpoint_raw(con,"https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2023/segments/0/leagues/631978?view=mBoxscore&view=mMatchupScore&view=mRoster&view=mSettings&view=mStatus&view=mTeam&view=modular&view=mNav")
 
 # function that returns the right list from box[[1]] based on the name attribute given
-get_list = function(name){
+# check to see if box is present in the current environment. if not fetch it with espn_getendpoint
+get_list = function(name,con = con){
+  if(!exists('box')){
+    con = espn_connect(season = as.integer(format(Sys.Date(), "%Y")),
+                       league_id = 631978,
+                       espn_s2 = Sys.getenv("espn_s2"),
+                       swid= Sys.getenv('swid'))
+    box = espn_getendpoint(con,view = 'mBoxscore')
+  }
   for(i in 1:length(box$content$teams)){
     if(box$content$teams[[i]]$name == name){
       return(box$content$teams[[i]])
     }
   }
+  
 }
 
 #function to retrieve the team name give supplied id
@@ -59,9 +69,11 @@ rosters$franchise_name = sapply(rosters$franchise_id, function(x) get_name(id = 
 rosters$franchise_name = sapply(rosters$franchise_id, function(x) get_list(name = x)$name)
 
 # get the value of name from each list in box$content$teams
-
 test = sapply(box$content$teams, 
               function(x) tibble("{x$name}" := as.integer(x$id)),simplify = F)
+
+
+
 
 
 box$content$teams$name
